@@ -12,17 +12,17 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
-#define BUCKETSET_EACH_BUCKET_SIZE  (64)
+#define BUCKETSET_EACH_BUCKET_HASH_NUM  (64)
 #define BUCKET_DEFAULT_BLOCK_SIZE  (64*1024*1024)
-bucketset *bucketset_create(const char *name, uint64_t bucket_group_size,uint64_t bucket_max_size, uint64_t block_size)
+bucketset *bucketset_create(const char *name, uint64_t bucket_group_size,uint64_t bucket_contians_hash_count, uint64_t block_size)
 {
   bucketset *bst = (bucketset *)calloc(1, sizeof(bucketset));
   assert(bst != NULL);
   int ret = -1;
   bst->bucket_cur_size = 0;
   bst->bucket_group_size = bucket_group_size;
-  bst->bucket_max_size = (bucket_max_size<BUCKETSET_EACH_BUCKET_SIZE)? BUCKETSET_EACH_BUCKET_SIZE:bucket_max_size;
-  bst->bucket_max_hash = bst->bucket_max_size*bst->bucket_group_size;
+  bst->bucket_contians_hash_count = (bucket_contians_hash_count<BUCKETSET_EACH_BUCKET_HASH_NUM)? BUCKETSET_EACH_BUCKET_HASH_NUM:bucket_contians_hash_count;
+  bst->bucket_max_hash = bst->bucket_contians_hash_count*bst->bucket_group_size;
   vector_cb cb = (vector_cb)&bucket_destroy;
   ret = vector_init(&bst->buckets, bst->bucket_max_hash, cb);
   log_safe("init bucketset %p ,ret %d,bucketset vector %p,cap %ld", bst, ret, &bst->buckets, bst->buckets.cap);
@@ -48,14 +48,16 @@ void bucketset_print(bucketset *bst){
   if(bst !=NULL) {
     fprintf(stdout,"bucketset_name:%s\n",slice_value(&bst->set_name));
     fprintf(stdout,"block_size :%d Mb\n",bst->block_size/1024/1024);
+    fprintf(stdout,"group_size :%d\n",bst->bucket_group_size);
     fprintf(stdout,"bucket_max_hash:%d\n",bst->bucket_max_hash);
     fprintf(stdout,"bucket_cur_size:%d\n",bst->bucket_cur_size);
     fprintf(stdout,"bucket_hash:%ld\n",bst->bucket_max_hash);
-    fprintf(stdout,"bucket_max_size:%ld\n",bst->bucket_max_size);
+    fprintf(stdout,"bucket_contians_hash_count:%ld\n",bst->bucket_contians_hash_count);
     fprintf(stdout,"bucket info:\n");
     for(uint32_t i=0;i<bst->bucket_group_size;i++) {
       bucket *bt = (bucket *)vector_at(&bst->buckets,i);
-      fprintf(stdout,"bucket[%d]:min=%ld,max=%ld\n",i,bt->min_rank,bt->max_rank);
+      fprintf(stdout,"bucket[%d]:name=%s,min=%ld,max=%ld\n",i,slice_value(&bt->bucket_prefix_name),bt->min_rank,bt->max_rank);
+      
     }
   }
 }
@@ -64,7 +66,7 @@ int bucketset_dump(bucketset *bst){
 }
 bucket *bucketset_search_bucket(bucketset *bst, uint64_t hash)
 {
-  uint32_t h = hash_jump_consistent(hash,bst->bucket_max_size);
+  uint32_t h = hash_jump_consistent(hash,bst->bucket_max_hash);
   log_safe("vector cap size %ld,search index %ld",bst->buckets.size,h);
   return (bucket *)vector_at(&bst->buckets,h);
 }
@@ -77,7 +79,7 @@ int bucketset_delete_bucket(bucketset *bst, bucket *bt)
 #ifdef BUCKETSET_TEST
 int main(void) {
   log_init(LOG_ERR,LOG_STDOUT_TYPE,NULL);
-  bucketset *bst = bucketset_create("test_set",3,16384,64);
+  bucketset *bst = bucketset_create("test_set",3,64,64);
   bucketset_print(bst);
   return 0;
 }

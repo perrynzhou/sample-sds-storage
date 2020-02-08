@@ -14,13 +14,13 @@ typedef struct bucketset_t
 {
   slice set_name;
   uint64_t bucket_cur_size;
-  uint64_t bucket_max_size;
+  uint64_t bucket_contians_hash_count;
   uint64_t bucket_group_size;
   vector buckets; // vector save bucket;
   uint64_t bucket_max_hash;
   uint64_t block_size;
 } bucketset;
-bucketset *bucketset_create(const char *name, uint64_t bucket_group_size,uint64_t bucket_max_size, uint64_t block_size);
+bucketset *bucketset_create(const char *name, uint64_t bucket_group_size,uint64_t bucket_contians_hash_count, uint64_t block_size);
 int bucketset_delete_bucket(bucketset *bst, bucket *bt);
 void bucketset_print(bucketset *bst);
 int bucketset_dump(bucketset *bst);
