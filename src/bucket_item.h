@@ -12,9 +12,15 @@
 #include "bucket_store.h"
 #include "bucket_object.h"
 #include <stdint.h>
+//store in data_file header
+typedef struct bucket_item_header_t {
+    uint32_t bucket_index;
+    uint64_t bucket_count;
+}bucket_item_header;
 typedef struct  bucket_item_t {
    int fd;
    slice  bukcet_item_prefix_name;
+   bucket_item_header header;
    uint64_t used_bytes;
    uint64_t block_size;
    uint64_t hash;

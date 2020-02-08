@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #define BUCKET_DEFAULT_OBJECT_SIZE (16384)
-#define BUCKET_PREFIX_NAME  ("%s-%ld-%ld-bucket")
+#define BUCKET_PREFIX_FMT  ("%s-%ld-%ld-bucket")
 typedef struct bucket_t {
   slice bucket_prefix_name; 
   uint64_t min_rank;

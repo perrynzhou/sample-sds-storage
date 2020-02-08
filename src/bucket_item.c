@@ -54,7 +54,7 @@ int bucket_item_store(bucket_item *item,bucket_object *obj,uint64_t *bucket_inde
     item->fd = fd;
      __sync_fetch_and_add(&bucket_index,1);
   }
-  obj->bucket_index = item->bucket_index;
+  //obj->bucket_index = item->bucket_index;
   ret =item->store.write_bucket_object(item,obj);
   log_safe("write object size %d bytes,ret =%d",obj->data_len,ret);
   //log("####write object size %d bytes,ret =%d",obj->data_len,ret);

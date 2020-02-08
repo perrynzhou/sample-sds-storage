@@ -30,7 +30,7 @@ bucketset *bucketset_create(const char *name, uint64_t bucket_group_size,uint64_
   {
     uint64_t start_offset = i * BUCKET_DEFAULT_OBJECT_SIZE;
     uint64_t end_offset  = (i+1)*BUCKET_DEFAULT_OBJECT_SIZE-1;
-    slice *bucket_prefix_name = slice_create_with_fmt(BUCKET_PREFIX_NAME, name, start_offset, end_offset);
+    slice *bucket_prefix_name = slice_create_with_fmt(BUCKET_PREFIX_FMT, name, start_offset, end_offset);
     bucket *bt = bucket_create(slice_value(bucket_prefix_name), block_size, start_offset, end_offset);
     assert(bt != NULL);
     log_safe("bucket %p,start_offset %ld,end_offset %ld", bt, bt->min_rank, bt->max_rank);
