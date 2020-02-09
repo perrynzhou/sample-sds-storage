@@ -15,6 +15,7 @@ typedef struct netsocket_t
   slice addr;
   int backlog;
   struct ev_loop *loop;
+  int sock;
 } netsocket;
 int netsocket_init(netsocket *ns, const char *addr, int port, int backlog);
 void netsocket_start(netsocket *ns);
