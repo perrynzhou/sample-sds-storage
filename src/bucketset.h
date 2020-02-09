@@ -12,14 +12,15 @@
 #include <stdint.h>
 typedef struct bucketset_t
 {
-  slice  set_name;
+  slice data_dir;
+  slice set_name;
   uint64_t bucket_object_size;
   uint64_t bucket_range_count;
   uint64_t bucket_size;
-  vector buckets; // vector save bucket;
-  uint64_t data_file_size_unit;//mb as unit
+  vector buckets;               // vector save bucket;
+  uint64_t data_file_size_unit; //mb as unit
 } bucketset;
-bucketset *bucketset_create(const char *name, uint64_t bucket_size,uint64_t bucket_range_count, uint64_t data_file_size_unit);
+bucketset *bucketset_create(const char *name, const char *data_dir, uint64_t bucket_size, uint64_t bucket_range_count, uint64_t data_file_size_unit);
 int bucketset_delete_bucket(bucketset *bst, bucket *bt);
 void bucketset_print(bucketset *bst);
 int bucketset_dump(bucketset *bst);
