@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/time.h>
+#define LOG_MAX_LEN (4096) /* max length of log message */
 static int _scnprintf(char *buf, size_t size, const char *fmt, ...);
 static int _safe_vsnprintf(char *to, size_t size, const char *format, va_list ap);
 static int _safe_snprintf(char *to, size_t n, const char *fmt, ...);
@@ -64,22 +65,23 @@ static void _log_stderr_safe(const char *fmt, ...);
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 static struct logger logger;
 const char *logger_level_names[] = {
+    "FATAL",
     "ERR",
     "WARN",
     "INFO",
     "DEBUG",
-    "TRACE",
 };
+//static const char* level_colors[] = { "\x1b[94m", "\x1b[36m", "\x1b[32m","\x1b[33m", "\x1b[31m", "\x1b[35m" };
 static const char *logger_level_colors[] = {
+   // "\x1b[94m",
     "\x1b[35m",
     "\x1b[36m",
     "\x1b[32m",
     "\x1b[33m",
     "\x1b[31m"};
-int log_init(int level, int output_type, char *filename)
+int log_init(int output_type, char *filename)
 {
     struct logger *l = &logger;
-    l->level = MAX(LOG_ERR, MIN(level, LOG_TRACE));
     l->name = filename;
     if (output_type < LOG_STDOUT_TYPE || output_type > LOG_DEFINE_TYPE)
     {
@@ -110,44 +112,59 @@ int log_init(int level, int output_type, char *filename)
             }
         }
     }
-    log_safe("init log success,output to %d", l->fd);
+    log_info_safe("init log success,output to %d", l->fd);
     return 0;
 }
-void _log_safe(const char *file, int line, int panic, const char *fmt, ...)
+static inline bool _log_valid_level(int level)
 {
-    struct logger *l = &logger;
-    int len, size, errno_save;
-    char buf[LOG_MAX_LEN];
-    va_list args;
-    ssize_t n;
-
-    if (l->fd < 0)
+    if (level < LOG_FATAL || level > LOG_DEBUG)
     {
-        return;
+        return false;
     }
-    struct timeval tv;
-    errno_save = errno;
-    len = 0;            /* length of output buffer */
-    size = LOG_MAX_LEN; /* size of output buffer */
-    gettimeofday(&tv, NULL);
-    buf[len++] = '[';
-    len += _log_strftime(buf + len, size - len, "%Y-%m-%d %H:%M:%S.", localtime(&tv.tv_sec));
-    len += _log_safe_snprintf(buf + len, size - len, "%03ld", tv.tv_usec / 1000);
-    len += _log_safe_snprintf(buf + len, size - len, "] [%s%s\x1b[0m \x1b[90m] %s:%d ", logger_level_colors[l->level], logger_level_names[l->level], file, line);
-
-    va_start(args, fmt);
-    len += _log_safe_vsnprintf(buf + len, size - len, fmt, args);
-    va_end(args);
-
-    buf[len++] = '\n';
-
-    n = _log_write(l->fd, buf, len);
-    if (n < 0)
+    return true;
+}
+void _log_safe(const char *file, int line, int level, const char *fmt, ...)
+{
+    if (_log_valid_level(level))
     {
-        l->nerror++;
-    }
+        struct logger *l = &logger;
+        int len, size, errno_save;
+        char buf[LOG_MAX_LEN];
+        va_list args;
+        ssize_t n;
 
-    errno = errno_save;
+        if (l->fd < 0)
+        {
+            return;
+        }
+        struct timeval tv;
+        errno_save = errno;
+        len = 0;            /* length of output buffer */
+        size = LOG_MAX_LEN; /* size of output buffer */
+        gettimeofday(&tv, NULL);
+        buf[len++] = '[';
+        len += _log_strftime(buf + len, size - len, "%Y-%m-%d %H:%M:%S.", localtime(&tv.tv_sec));
+        len += _log_safe_snprintf(buf + len, size - len, "%03ld", tv.tv_usec / 1000);
+        len += _log_safe_snprintf(buf + len, size - len, "] [%s%s\x1b[0m \x1b[90m] %s:%d ", logger_level_colors[level], logger_level_names[level], file, line);
+
+        va_start(args, fmt);
+        len += _log_safe_vsnprintf(buf + len, size - len, fmt, args);
+        va_end(args);
+
+        buf[len++] = '\n';
+
+        n = _log_write(l->fd, buf, len);
+        if (n < 0)
+        {
+            l->nerror++;
+        }
+
+        errno = errno_save;
+        if (level == LOG_FATAL)
+        {
+            abort();
+        }
+    }
 }
 
 static int
@@ -496,77 +513,53 @@ void log_reopen(void)
     }
 }
 
-void log_level_up(void)
+
+
+
+void _log(const char *file, int line, int level, const char *fmt, ...)
 {
-    struct logger *l = &logger;
-
-    if (l->level < LOG_TRACE)
+    if (_log_valid_level(level))
     {
-        l->level++;
-        log_safe("up log level to %d", l->level);
-    }
-}
+        struct logger *l = &logger;
+        int len, size, errno_save;
+        char buf[LOG_MAX_LEN];
+        va_list args;
+        ssize_t n;
+        struct timeval tv;
 
-void log_level_down(void)
-{
-    struct logger *l = &logger;
+        if (l->fd < 0)
+        {
+            return;
+        }
 
-    if (l->level > LOG_ERR)
-    {
-        l->level--;
-        log_safe("down log level to %d", l->level);
-    }
-}
+        errno_save = errno;
+        len = 0;            /* length of output buffer */
+        size = LOG_MAX_LEN; /* size of output buffer */
 
-void log_level_set(int level)
-{
-    struct logger *l = &logger;
+        gettimeofday(&tv, NULL);
+        buf[len++] = '[';
+        len += _log_strftime(buf + len, size - len, "%Y-%m-%d %H:%M:%S.", localtime(&tv.tv_sec));
+        len += _log_scnprintf(buf + len, size - len, "%03ld", tv.tv_usec / 1000);
+        // len += _log_scnprintf(buf + len, size - len, "] [%s] %s:%d ", logger_level_names[l->level], file, line);
+        len += _log_scnprintf(buf + len, size - len, "] [%s%s\x1b[0m \x1b[90m] %s:%d ", logger_level_colors[level], logger_level_names[level], file, line);
 
-    l->level = MAX(LOG_ERR, MIN(level, LOG_TRACE));
-    log_safe("set log level to %d", l->level);
-}
+        va_start(args, fmt);
+        len += _log_vscnprintf(buf + len, size - len, fmt, args);
+        va_end(args);
 
-void _log(const char *file, int line, int panic, const char *fmt, ...)
-{
-    struct logger *l = &logger;
-    int len, size, errno_save;
-    char buf[LOG_MAX_LEN];
-    va_list args;
-    ssize_t n;
-    struct timeval tv;
+        buf[len++] = '\n';
 
-    if (l->fd < 0)
-    {
-        return;
-    }
+        n = _log_write(l->fd, buf, len);
+        if (n < 0)
+        {
+            l->nerror++;
+        }
 
-    errno_save = errno;
-    len = 0;            /* length of output buffer */
-    size = LOG_MAX_LEN; /* size of output buffer */
+        errno = errno_save;
 
-    gettimeofday(&tv, NULL);
-    buf[len++] = '[';
-    len += _log_strftime(buf + len, size - len, "%Y-%m-%d %H:%M:%S.", localtime(&tv.tv_sec));
-    len += _log_scnprintf(buf + len, size - len, "%03ld", tv.tv_usec / 1000);
-    // len += _log_scnprintf(buf + len, size - len, "] [%s] %s:%d ", logger_level_names[l->level], file, line);
-    len += _log_scnprintf(buf + len, size - len, "] [%s%s\x1b[0m \x1b[90m] %s:%d ", logger_level_colors[l->level], logger_level_names[l->level], file, line);
-
-    va_start(args, fmt);
-    len += _log_vscnprintf(buf + len, size - len, fmt, args);
-    va_end(args);
-
-    buf[len++] = '\n';
-
-    n = _log_write(l->fd, buf, len);
-    if (n < 0)
-    {
-        l->nerror++;
-    }
-
-    errno = errno_save;
-
-    if (panic)
-    {
-        abort();
+        if (level == LOG_FATAL)
+        {
+            abort();
+        }
     }
 }

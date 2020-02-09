@@ -37,8 +37,8 @@ int bucket_store_init(bucket_store *bs)
     bs->read_bucket_object = read_bucket_object;
     bs->write_bucket_object = write_bucket_object;
     ret = 0;
-    log_safe("log-safe init bucket_store  functions success");
-    log("log init bucket_store  functions success");
+    log_err_safe("log-safe init bucket_store  functions success");
+    log_info("#####log init bucket_store  functions success");
 
   }
   return ret;
@@ -51,6 +51,6 @@ void bucket_store_deinit(bucket_store *bs)
     bs->write_bucket_item = NULL;
     bs->read_bucket_object = NULL;
     bs->write_bucket_object = NULL;
-    log_safe("bucket store  deinit success");
+    log_info_safe("bucket store  deinit success");
   }
 }

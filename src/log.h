@@ -11,18 +11,17 @@
 struct logger
 {
     char *name; /* log file name */
-    int level;  /* log level */
     int fd;     /* log file descriptor */
     int nerror; /* # log error */
 };
 
 enum logger_level
 {
-    LOG_ERR = 0,
+    LOG_FATAL = 0,
+    LOG_ERR,
     LOG_WARN,
     LOG_INFO,
-    LOG_DEBUG,
-    LOG_TRACE,
+    LOG_DEBUG
 };
 
 enum logger_output_type
@@ -31,25 +30,61 @@ enum logger_output_type
     LOG_STDERR_TYPE = 1,
     LOG_DEFINE_TYPE,
 };
-#define LOG_MAX_LEN (4096) /* max length of log message */
+#define log_info(...)                                    \
+    do                                                   \
+    {                                                    \
+        _log(__FILE__, __LINE__, LOG_INFO, __VA_ARGS__); \
+    } while (0)
+#define log_fatal(...)                                    \
+    do                                                    \
+    {                                                     \
+        _log(__FILE__, __LINE__, LOG_FATAL, __VA_ARGS__); \
+    } while (0)
+#define log_err(...)                                    \
+    do                                                  \
+    {                                                   \
+        _log(__FILE__, __LINE__, LOG_ERR, __VA_ARGS__); \
+    } while (0)
+#define log_warn(...)                                    \
+    do                                                   \
+    {                                                    \
+        _log(__FILE__, __LINE__, LOG_WARN, __VA_ARGS__); \
+    } while (0)
+#define log_debug(...)                                    \
+    do                                                    \
+    {                                                     \
+        _log(__FILE__, __LINE__, LOG_DEBUG, __VA_ARGS__); \
+    } while (0)
 
-#define log_safe(...)                                  \
-    do                                                 \
-    {                                                  \
-        _log_safe(__FILE__, __LINE__, 0, __VA_ARGS__); \
+#define log_info_safe(...)                                    \
+    do                                                        \
+    {                                                         \
+        _log_safe(__FILE__, __LINE__, LOG_INFO, __VA_ARGS__); \
     } while (0)
-#define log(...)                                  \
-    do                                            \
-    {                                             \
-        _log(__FILE__, __LINE__, 0, __VA_ARGS__); \
+#define log_fatal_safe(...)                                    \
+    do                                                         \
+    {                                                          \
+        _log_safe(__FILE__, __LINE__, LOG_FATAL, __VA_ARGS__); \
     } while (0)
-int log_init(int level, int output_type, char *filename);
+#define log_err_safe(...)                                    \
+    do                                                       \
+    {                                                        \
+        _log_safe(__FILE__, __LINE__, LOG_ERR, __VA_ARGS__); \
+    } while (0)
+#define log_warn_safe(...)                                    \
+    do                                                        \
+    {                                                         \
+        _log_safe(__FILE__, __LINE__, LOG_WARN, __VA_ARGS__); \
+    } while (0)
+#define log_debug_safe(...)                                    \
+    do                                                         \
+    {                                                          \
+        _log_safe(__FILE__, __LINE__, LOG_DEBUG, __VA_ARGS__); \
+    } while (0)
+int log_init(int output_type, char *filename);
 void log_deinit(void);
-void log_level_up(void);
-void log_level_down(void);
-void log_level_set(int level);
 void log_reopen(void);
-void _log(const char *file, int line, int panic, const char *fmt, ...);
-void _log_safe(const char *file, int line, int panic, const char *fmt, ...);
+void _log(const char *file, int line, int level, const char *fmt, ...);
+void _log_safe(const char *file, int line, int level, const char *fmt, ...);
 
 #endif

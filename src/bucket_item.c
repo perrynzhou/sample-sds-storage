@@ -22,7 +22,7 @@ bucket_item *bucket_item_create(const char *path, uint64_t hash, uint64_t bucket
   bucket_item *item = NULL;
   if (path != NULL)
   {
-    log_safe("start new path:%s,hash:%ld,bucket_index :%ld,block_size:%ld", path, hash, bucket_index, block_size);
+    log_info_safe("start new path:%s,hash:%ld,bucket_index :%ld,block_size:%ld", path, hash, bucket_index, block_size);
     item = (bucket_item *)calloc(1, sizeof(bucket_item));
     assert(item != NULL);
     item->bucket_index = bucket_index;
@@ -56,7 +56,7 @@ int bucket_item_store(bucket_item *item,bucket_object *obj,uint64_t *bucket_inde
   }
   //obj->bucket_index = item->bucket_index;
   ret =item->store.write_bucket_object(item,obj);
-  log_safe("write object size %d bytes,ret =%d",obj->data_len,ret);
+  log_debug_safe("write object size %d bytes,ret =%d",obj->data_len,ret);
   //log("####write object size %d bytes,ret =%d",obj->data_len,ret);
 
   return ret;
