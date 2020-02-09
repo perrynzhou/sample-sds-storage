@@ -14,20 +14,24 @@
 #include "bucket_store.h"
 #include <stdio.h>
 #include <stdint.h>
+#include <pthread.h>
 #define BUCKET_DEFAULT_OBJECT_SIZE (16384)
-#define BUCKET_PREFIX_FMT  ("%s-%ld-%ld-bucket")
 typedef struct bucket_t {
-  slice bucket_prefix_name; 
+  int     fd;//save data file fd
+  int      id;
+  slice    name; 
   uint64_t min_rank;
   uint64_t max_rank;
-  uint64_t block_size;//each block as data_file
+  uint64_t data_file_max_length;//data file length
+  uint64_t data_file_cur_length;
   uint64_t index;
+  pthread_mutex_t lock;
   bucket_store bs;
-  vector bucket_items;//save bucket_item,each list save 16384 bucket_item
+  vector   cache;//hashtable,each element save a list
   void *ctx;
 }bucket;
 
-bucket *bucket_create(const char *bucket_prefix_name,uint64_t block_size,uint64_t start,uint64_t end);
+bucket *bucket_create(const char *name,uint64_t data_file_max_length,uint64_t start,uint64_t end);
 int bucket_put(bucket *bt,bucket_object *obj);
 int bucket_del(bucket *bt,const char *name);
 bucket_object *bucket_get(bucket *bt,const char *name);

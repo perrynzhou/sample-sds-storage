@@ -12,8 +12,8 @@
 #define BUCKET_OBJECT_UID_LEN  (64)
 typedef struct bucket_object_t {
   uint64_t cur_offset;
-  uint32_t obj_name_len;
   uint32_t obj_uid_len;
+  uint32_t obj_name_len;
   uint64_t hash;
   uint64_t data_len;
   uint64_t next_offset;

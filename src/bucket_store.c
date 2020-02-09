@@ -12,12 +12,6 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-ssize_t read_bucket_item(void *bucet_item)
-{
-}
-ssize_t write_bucket_item(void *bucket_item)
-{
-}
 ssize_t read_bucket_object(void *bucket, void *object)
 {
 }
@@ -32,8 +26,6 @@ int bucket_store_init(bucket_store *bs)
   int ret = -1;
   if (bs != NULL)
   {
-    bs->read_bucket_item = read_bucket_item;
-    bs->write_bucket_item = write_bucket_item;
     bs->read_bucket_object = read_bucket_object;
     bs->write_bucket_object = write_bucket_object;
     ret = 0;
@@ -47,8 +39,6 @@ void bucket_store_deinit(bucket_store *bs)
 {
   if (bs != NULL)
   {
-    bs->read_bucket_item = NULL;
-    bs->write_bucket_item = NULL;
     bs->read_bucket_object = NULL;
     bs->write_bucket_object = NULL;
     log_info_safe("bucket store  deinit success");

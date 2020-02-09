@@ -12,8 +12,6 @@
 #include <stdint.h>
 typedef struct bucket_store_t
 {
-  ssize_t (*read_bucket_item)(void *bucet_item);
-  ssize_t (*write_bucket_item)(void *bucket_item);
   ssize_t (*read_bucket_object)(void *bucket, void *object);
   ssize_t (*write_bucket_object)(void *bucket, void *object);
   int (*delete_bucket_item)(int fd, void *bucket);

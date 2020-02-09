@@ -6,54 +6,110 @@
  ************************************************************************/
 
 #include "bucket.h"
-#include "bucket_item.h"
 #include "bucket_store.h"
 #include "list.h"
 #include "hash.h"
+#include "log.h"
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
 #define BUCKET_LIST_SIZE (4)
-bucket *bucket_create(const char *bucket_prefix_name, uint64_t block_size, uint64_t start, uint64_t end)
+static int bucket_create_data_fd(bucket *bt)
+{
+  int fd = -1;
+  char buffer[4096] = {'\0'};
+  snprintf((char *)&buffer, 4096, "%s.%d", bt->name, bt->index);
+  char *file = (char *)&buffer;
+  struct stat st;
+  if (stat(file, &st) == -1)
+  {
+    fd = open(file, O_CREAT | O_RDWR | O_APPEND);
+    if (fallocate(fd, 0, 0, bt->data_file_max_length) != 0)
+    {
+      log_fatal_safe("fallocate file %s,failed:%s", file, strerror(errno));
+    }
+    log_info("create file %s success,length:%d mb", file, bt->data_file_max_length / 1024 / 1024);
+  }
+  return fd;
+}
+bucket *bucket_create(const char *name, uint64_t data_file_max_length, uint64_t start, uint64_t end)
 {
   bucket *bt = NULL;
-  if (bucket_prefix_name != NULL)
+  if (name != NULL)
   {
     bt = (bucket *)calloc(1, sizeof(bucket));
     assert(bt != NULL);
     bt->index = 0;
-    bt->block_size = block_size;
-    vector_init(&bt->bucket_items, end - start, NULL);
-    char active_path[256] = {'\0'};
+    bt->data_file_max_length = data_file_max_length;
+    bt->data_file_cur_length = 0;
     bucket_store_init(&bt->bs);
-    slice_init(&bt->bucket_prefix_name, bucket_prefix_name);
+    slice_init(&bt->name, name);
     bt->min_rank = start;
     bt->max_rank = end;
+    bt->fd = bucket_create_data_fd(bt);
+    vector_init(&bt->cache, bt->max_rank - bt->min_rank, NULL);
+    log_info_safe("init bucket %d cache,each contains %ld list", bt->max_rank - bt->min_rank);
+    pthread_mutex_init(&bt->lock, NULL);
+    log_info_safe("init bucket success");
   }
+
   return bt;
+}
+
+static int bucket_check_data_fd(bucket *bt)
+{
+
+  if (bt->data_file_cur_length >= bt->data_file_max_length)
+  {
+    pthread_mutex_lock(&bt->lock);
+    if (bt->fd != -1)
+    {
+      close(bt->fd);
+    }
+    int fd = bucket_create_data_fd(bt);
+    if (fd == -1)
+    {
+      log_err_safe("switch data file to %s.%d failed:%s", slice_value(&bt->name), bt->index + 1);
+      return -1;
+    }
+    bt->fd = fd;
+    bt->index++;
+    pthread_mutex_unlock(&bt->lock);
+  }
+  log_info_safe("open data file:%s.%d success,fd =%d", slice_value(&bt->name), bt->index, bt->fd);
+  return 0;
 }
 int bucket_put(bucket *bt, bucket_object *obj)
 {
-  int ret = -1;
 
   if (bt != NULL || obj != NULL)
   {
-
-    bucket_item *cur_item = vector_at(&bt->bucket_items, obj->hash);
-    if (cur_item == NULL)
+    if (bucket_check_data_fd(bt) != 0)
     {
-      cur_item = bucket_item_create(slice_value(&bt->bucket_prefix_name),obj->hash,bt->index,bt->block_size);
-      slice_init(&cur_item->bukcet_item_prefix_name,slice_value(&bt->bucket_prefix_name));
-      vector_insert(&bt->bucket_items, obj->hash, cur_item);
+      log_fatal("%s.%d can't switch new file", slice_value(&bt->name), bt->index);
     }
-     __sync_fetch_and_add(&cur_item->used_bytes,obj->data_len);
+    list *lt = vector_at(&bt->cache, obj->hash);
+    if (lt == NULL)
+    {
+      lt = list_create();
+      assert(lt != NULL);
+      vector_insert(&bt->cache, obj->hash, lt);
+    }
     list_node *node = list_node_create(obj);
-    assert(node != NULL);
-    ret = list_add(cur_item->objects, node);
-    bucket_item_store(cur_item,obj,&bt->index);
-    return 0; 
+    list_add(lt, node);
+    bt->bs.write_bucket_object(bt, obj);
+    return 0;
   }
-  return ret;
+  return -1;
 }
 int bucket_del(bucket *bt, const char *name)
 {

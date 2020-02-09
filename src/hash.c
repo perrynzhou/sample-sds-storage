@@ -129,7 +129,7 @@ int main(int argc, const char *argv[])
     char buf[1024] = {'\0'};
     snprintf((char *)&buf, 1024, "%d.txt", rand());
     uint32_t hash = gfs_hashfn((char *)&buf, strlen((char *)&buf));
-    uint32_t h = hash_jump_consistent(hash, n);
+    uint32_t h = hash_jump_consistent(hash, 4);
     fprintf(stdout, "hash:%ld,sum[%d] =%d\n", h, h, sum[h]);
       sum[h] = sum[h] + 1;
   }
