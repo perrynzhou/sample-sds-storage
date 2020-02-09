@@ -27,7 +27,7 @@ static int bucket_create_data_fd(bucket *bt)
 {
   int fd = -1;
   char buffer[4096] = {'\0'};
-  snprintf((char *)&buffer, 4096, "%s.%d", bt->name, bt->index);
+  snprintf((char *)&buffer, 4096, "%s.%d", slice_value(&bt->name), bt->index);
   char *file = (char *)&buffer;
   struct stat st;
   if (stat(file, &st) == -1)
