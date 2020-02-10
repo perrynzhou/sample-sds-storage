@@ -120,27 +120,42 @@ uint32_t hash_jump_consistent(uint64_t key, int32_t num_buckets)
   return value;
 }
 #ifdef HASH_TEST
+#include "md5.h"
 int main(int argc, const char *argv[])
 {
-  uint32_t n = 163840;
+  uint32_t n = 100;
   int *sum = calloc(n, sizeof(uint32_t));
   for (uint32_t i = 0; i < n; i++)
   {
     char buf[1024] = {'\0'};
-    snprintf((char *)&buf, 1024, "%d.txt", rand());
-    uint32_t hash = gfs_hashfn((char *)&buf, strlen((char *)&buf));
-    uint32_t h = hash_jump_consistent(hash, 4);
-    fprintf(stdout, "hash:%ld,sum[%d] =%d\n", h, h, sum[h]);
-      sum[h] = sum[h] + 1;
-  }
+    char md5_str[32] = {'\0'};
+    snprintf((char *)&buf, 1024, "%d_%d.txt", rand(),rand()*rand());
+    size_t len = strlen(buf);
 
+	  md5_string((unsigned char *)&buf, len, md5_str);
+  
+    fprintf(stdout,"string:%s,md5sum:%s\n",buf,&md5_str);
+
+    uint32_t hash = gfs_hashfn((char *)&md5_str, strlen((char *)&md5_str));
+    uint32_t h = hash_jump_consistent(hash, n);
+    fprintf(stdout, "hash:%ld,sum[%d] =%d\n", h, h, sum[h]);
+    sum[h] = sum[h] + 1;
+  }
+ int k=0;
+    int m=0;
   for (uint32_t i = 0; i < n; i++)
   {
-    if (sum[i] > 3)
+   
+    if (sum[i] > 0)
     {
-      fprintf(stdout, "sum[%d]=%d\n",i, sum[i]);
+     // fprintf(stdout, "sum[%d]=%d\n",i, sum[i]);
+      k++;
+    }else{
+      m++;
     }
   }
+      fprintf(stdout,"total:%d,>0 :%d,=0 :%d,rate:%3f\n",n,k,m,(double)(k/n));
+
   free(sum);
 }
 #endif

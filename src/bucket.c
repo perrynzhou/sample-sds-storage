@@ -97,12 +97,14 @@ int bucket_put(bucket *bt, bucket_object *obj)
     {
       log_fatal("%s.%d can't switch new file", slice_value(&bt->name), bt->index);
     }
-    list *lt = vector_at(&bt->cache, obj->hash);
+    uint32_t index = hash_jump_consistent(obj->obj_hash, (bt->max_rank-bt->min_rank))+bt->min_rank;
+    log_info_safe("current bucket-%d ,insert index:%ld,start:%ld,end:%d",bt->id,index,bt->min_rank,bt->max_rank);
+    list *lt = vector_at(&bt->cache,index);
     if (lt == NULL)
     {
       lt = list_create();
       assert(lt != NULL);
-      vector_insert(&bt->cache, obj->hash, lt);
+      vector_insert(&bt->cache, obj->obj_hash, lt);
     }
     list_node *node = list_node_create(obj);
     list_add(lt, node);

@@ -108,6 +108,11 @@ int main(void)
   log_init(LOG_STDOUT_TYPE, NULL);
   bucketset *bst = bucketset_create("test_set", "/tmp", 3, 8192, 64);
   bucketset_print(bst);
+  int n=1024;
+  bucket_object *objs[1024] = {NULL};
+  for(int i=0;i<n;i++) {
+    objs[i] = bucket
+  }
   return 0;
 }
 #endif

@@ -13,30 +13,35 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-bucket_object *bucket_object_create(const char *path, int dst_fd, uint64_t hash, uint64_t start_offset)
+inline void bucket_object_set_hash(bucket_object *obj, uint64_t hash)
 {
-  bucket_object *obj = NULL;
-  if (path != NULL && dst_fd != -1)
+  if (obj != NULL)
   {
-    obj = (bucket_object *)calloc(1, sizeof(bucket_object));
-    slice object_name;
-    parse_filename_from_path(&object_name, path);
-    obj->hash = hash;
-    char *buffer = calloc(1024 * 1024, sizeof(char));
-    assert(buffer != NULL);
-    int fd = open(path, O_RDONLY);
-    assert(fd != -1);
-    ssize_t obj_data_len = write_file(fd, dst_fd, buffer, 1024 * 1024);
-    obj->cur_offset = start_offset;
-    obj->obj_name_len = slice_size(&object_name);
-    obj->next_offset = sizeof(bucket_object)+BUCKET_OBJECT_UID_LEN+obj->obj_name_len+obj->obj_uid_len+obj_data_len;
-    slice_deinit(&object_name);
-    if(buffer!=NULL) {
-      free(buffer);
-    }
-    return  obj;
+    obj->obj_hash = hash;
   }
-  return NULL;
+}
+inline void bucket_object_set_bucket_index(bucket_object *obj, uint32_t index)
+{
+  if (obj != NULL)
+  {
+    obj->bucket_index = index;
+  }
+}
+bucket_object *bucket_object_create(uint64_t start_offset, uint8_t *obj_uid, uint32_t obj_name_len, uint64_t data_len)
+{
+  bucket_object *obj = (bucket_object *)calloc(1, sizeof(bucket_object));
+  assert(obj != NULL);
+  for (uint32_t i = 0; i < BUCKET_OBJECT_UID_LEN; i++)
+  {
+    obj->uid[i] = obj_uid[i];
+  }
+  obj->cur_offset = start_offset;
+  obj->obj_name_len = obj_name_len;
+  obj->obj_hash = 0;
+  obj->data_len = data_len;
+  obj->bucket_index = 0;
+  obj->status = ONLINE;
+  return obj;
 }
 int bucket_object_delete(bucket_object *obj)
 {
