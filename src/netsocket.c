@@ -18,6 +18,17 @@
 #define NETSOCKET_DEFAULT_BACKLOG (1024)
 #define NETSOCKET_DEFAULT_PORT 8765
 #define NETSOCKET_DEFAULT_ADDR "127.0.0.1"
+typedef struct ev_io_watcher_t
+{
+  struct ev_io watcher;
+  void *ctx;
+} ev_io_watcher;
+typedef struct ev_timer_watcher_t
+{
+  ev_timer watcher;
+  void *ctx;
+} ev_timer_watcher;
+
 static void timeout_cb(EV_P_ ev_timer *w, int revents);
 static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
 static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
@@ -27,7 +38,7 @@ static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
   int client_sd;
-
+  ev_io_watcher *eiw = (ev_io_watcher *)watcher;
   struct ev_io *w_client = (struct ev_io *)malloc(sizeof(struct ev_io));
   if (EV_ERROR & revents)
   {
@@ -48,13 +59,14 @@ static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 }
 static void timeout_cb(EV_P_ ev_timer *w, int revents)
 {
-  log_info("%ld timeout", getpid());
+  ev_timer_watcher *evw = (ev_timer_watcher *)w;
+  int *value = (int *)evw->ctx;
+  log_info_safe("##ev_timer ctx:%d", *value);
 }
 static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
   char buffer[1024];
   ssize_t read;
-
   if (EV_ERROR & revents)
   {
     printf("error event in read");
@@ -139,15 +151,16 @@ int netsocket_init(netsocket *ns, const char *saddr, int port, int backlog)
 void netsocket_start(netsocket *ns)
 {
   log_info("netsocket start running");
-  struct ev_io socket_watcher;
-  ev_timer timeout_watcher;
+  ev_io_watcher socket_watcher;
+  socket_watcher.ctx = ns->ctx;
+  //struct ev_io socket_watcher;
+  ev_timer_watcher timeout_watcher;
+  timeout_watcher.ctx = ns->ctx;
 
-  ev_timer_init(&timeout_watcher, timeout_cb, 2, 1);
-
-  ev_io_init(&socket_watcher, accept_cb, ns->sock, EV_READ);
-  ev_io_start(ns->loop, &socket_watcher);
-
-  ev_timer_start(ns->loop, &timeout_watcher);
+  ev_timer_init(&timeout_watcher.watcher, timeout_cb, 2, 1);
+  ev_io_init(&socket_watcher.watcher, accept_cb, ns->sock, EV_READ);
+  ev_io_start(ns->loop, &socket_watcher.watcher);
+  ev_timer_start(ns->loop, &timeout_watcher.watcher);
 
   ev_run(ns->loop, 0);
 }
