@@ -7,8 +7,10 @@
 
 #ifndef _UTILS_H
 #define _UTILS_H
+#include "slice.h"
 #include <unistd.h>
 ssize_t write_n(int fd, const void *buf, size_t len);
 ssize_t read_n(int fd, void *buf, size_t len);
 void fetch_sock_addr_info(int fd, char *str);
+int  parse_file_name(slice *se,const char *path);
 #endif

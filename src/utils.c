@@ -40,7 +40,7 @@ ssize_t write_n(int fd, const void *buf, size_t len)
     }
     else if (errno != EINTR)
     {
-      fprintf(stdout,"write error: %s(errno: %d)\n", strerror(errno), errno);
+      fprintf(stdout, "write error: %s(errno: %d)\n", strerror(errno), errno);
       break;
     }
   }
@@ -68,9 +68,35 @@ ssize_t read_n(int fd, void *buf, size_t len)
   }
   return readn;
 }
+int parse_file_name(slice *se, const char *path)
+{
+  if (se != NULL && path != NULL)
+  {
+    char *base = (char *)path;
+    size_t len = strlen(base);
+    int index = 0, pos = 0;
+    while (base[index] != '\0')
+    {
+      if (base[index] == '/')
+      {
+        pos = index + 1;
+      }
+      index++;
+    }
+    slice_init(se, path + pos);
+    return 0;
+  }
+  return -1;
+}
 #ifdef UTILS_TEST
 int main(void)
 {
+  slice se1;
+  slice se2;
+  parse_file_name(&se1, "./a/b.txt");
+  parse_file_name(&se2, "acb.txt");
+  slice_print(&se1);
+  slice_print(&se2);
   return 0;
 }
 #endif
