@@ -8,50 +8,69 @@
 #include "utils.h"
 #include <stdio.h>
 #include <string.h>
-ssize_t read_file(int fd, void *buf, size_t count)
+#include <errno.h>
+#include <unistd.h>
+#include <string.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+void fetch_sock_addr_info(int fd, char *str)
 {
-  return 0;
+  struct sockaddr ip_addr_struct;
+  socklen_t len = sizeof(ip_addr_struct);
+  getpeername(fd, (struct sockaddr *)&ip_addr_struct, &len);
+  struct sockaddr_in *s = (struct sockaddr_in *)&ip_addr_struct;
+  int port = ntohs(s->sin_port);
+  char ip_addr[64] = {'\0'};
+  inet_ntop(AF_INET, &s->sin_addr, (char *)&ip_addr, 64);
+  sprintf(str, "%s:%d", ip_addr, port);
 }
-ssize_t write_file(int fd,int dst_fd,const void *buf, size_t count)
+ssize_t write_n(int fd, const void *buf, size_t len)
 {
-  return 0;
-}
-int parse_filename_from_path(slice *se, const char *path)
-{
-  int ret = -1;
-  if (!se || !path)
+  int writen = 0;
+  while (writen < len)
   {
-    return ret;
-  }
-  size_t len = strlen(path);
-  const char *base = path;
-  if (strchr(path, '/') == NULL)
-  {
-    slice_strncpy(se, path, len);
-    return ret;
-  }
-  for (int i = len - 1; i >= 0; i--)
-  {
-    if (base[i] == '/')
+    ssize_t w = write(fd, (const char *)buf + writen, len - writen);
+    if (w > 0)
     {
-      slice_strncpy(se, base + i + 1, len - i);
-      ret = 0;
+      writen += w;
+    }
+    else if (w == 0)
+    {
+      break;
+    }
+    else if (errno != EINTR)
+    {
+      fprintf(stdout,"write error: %s(errno: %d)\n", strerror(errno), errno);
       break;
     }
   }
-  return ret;
+  return writen;
+}
+ssize_t read_n(int fd, void *buf, size_t len)
+{
+  int readn = 0;
+  while (readn < len)
+  {
+    ssize_t r = read(fd, (char *)buf + readn, len - readn);
+    if (r > 0)
+    {
+      readn += r;
+    }
+    else if (r == 0)
+    {
+      break;
+    }
+    else if (r != EINTR)
+    {
+      printf("read error: %s(errno: %d)\n", strerror(errno), errno);
+      break;
+    }
+  }
+  return readn;
 }
 #ifdef UTILS_TEST
 int main(void)
 {
-  const char *a = "aaa.txt";
-  const char *b = "/a/c/b";
-  slice sa;
-  slice sb;
-  parse_filename_from_path(&sa, a);
-  parse_filename_from_path(&sb, b);
-  slice_print(&sa);
-  slice_print(&sb);
   return 0;
 }
 #endif

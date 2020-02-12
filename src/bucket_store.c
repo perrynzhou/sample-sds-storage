@@ -12,13 +12,13 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-ssize_t read_bucket_object(void *bucket, void *object)
+int read_bucket_object(void *bucket, void *object)
 {
 }
-ssize_t write_bucket_object(void *bucket, void *object)
+int write_bucket_object(void *bucket, void *object)
 {
 }
-int delete_bucket_item(int fd, void *bucket)
+int delete_bucket_object(int fd, void *bucket)
 {
 }
 int bucket_store_init(bucket_store *bs)

@@ -12,9 +12,9 @@
 #include <stdint.h>
 typedef struct bucket_store_t
 {
-  ssize_t (*read_bucket_object)(void *bucket, void *object);
-  ssize_t (*write_bucket_object)(void *bucket, void *object);
-  int (*delete_bucket_item)(int fd, void *bucket);
+  int (*read_bucket_object)(void *bucket, void *object);
+  int (*write_bucket_object)(void *bucket, void *object);
+  int (*delete_bucket_object)(int fd, void *bucket);
 } bucket_store;
 int bucket_store_init(bucket_store *bs);
 void bucket_store_deinit(bucket_store *bs);
