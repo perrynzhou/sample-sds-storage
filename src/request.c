@@ -8,7 +8,11 @@
 #include "request.h"
 #include "utils.h"
 #include "md5.h"
+#include "slice.h"
 #include <stdio.h>
+#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -24,7 +28,7 @@ int request_put_object_init(int sock, const char *path)
        uint8_t uid[BUCKET_OBJECT_UID_SZ]={'\0'};
        slice name;
        parse_file_name(&name,path);
-       strncpy((char *)&req->name,slice_value(&name),slice_value(&name));
+       strncpy((char *)&req->name,slice_value(&name),slice_size(&name));
        md5_file(path,(char *)&uid);
        slice_deinit(&name);
     }
