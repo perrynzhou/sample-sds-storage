@@ -19,6 +19,7 @@ typedef struct request_put_object_t {
    uint32_t req_id;
    char    name[BUCKET_OBJECT_NAME_SZ];
    uint8_t uid[BUCKET_OBJECT_UID_SZ];
+   uint64_t data_length;
    char    data[];
 }request_put_object;
 int request_put_object_init(int sock,const char *path);
