@@ -66,7 +66,7 @@ int sds_store_run(sds_store *ss)
     netsocket_start(&ss->net);
   }
 }
-*/
+
 int main(int argc, char *argv[])
 {
   char *path = argv[1];
@@ -76,3 +76,4 @@ int main(int argc, char *argv[])
   sds_store_deinit(&ss);
   return 0;
 }
+*/

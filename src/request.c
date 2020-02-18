@@ -41,7 +41,7 @@ int  request_put_object_init(response_ack *ack,int sock,const char *path,const c
       parse_file_name(&name, path);
       req->data_length = st.st_size;
       strncpy((char *)&req->object_name, slice_value(&name), slice_size(&name));
-      strncpy((char *)&req->bucket_name, bucket_name, strlen(bucket_name));
+      strncpy((char *)&req->set_name, bucket_name, strlen(bucket_name));
       md5_file(path, (char *)&uid);
       slice_deinit(&name);
       size_t length = req->data_length;

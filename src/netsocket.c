@@ -12,6 +12,7 @@
 #include "sds_store.h"
 #include "utils.h"
 #include "slice.h"
+#include "vector.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,7 @@
 #include <netinet/in.h>
 #include <strings.h>
 #include <assert.h>
+#include <pthread.h>
 #define NETSOCKET_DEFAULT_BACKLOG (1024)
 #define NETSOCKET_DEFAULT_PORT 8765
 #define NETSOCKET_DEFAULT_ADDR "127.0.0.1"
@@ -115,8 +117,10 @@ static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 static void timeout_cb(EV_P_ ev_timer *w, int revents)
 {
   ev_timer_watcher *evw = (ev_timer_watcher *)w;
-  int *value = (int *)evw->ctx;
-  log_info_safe("##ev_timer ctx:%d", *value);
+  sds_store *ss = (sds_store *)evw->ctx;
+  if(ss!=NULL && ss->cf!=NULL) {
+       log_info_safe("----------------------conf info------------\n%s",conf_dump(ss->cf));
+  }
 }
 static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
@@ -177,8 +181,8 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
        }
     }
     if(sets==NULL || vector_size(&st->sets)==0) {
-      bucketset *bst = bucketset_create((char *)&req_bucket.set_name,slice_value(&st->cf->data_dir),st->cf->bucket_size,st->cf->set_hash_range,st->cf->data_length);
-      vector_push_back(&st->cf,bst);
+      bucketset *bst = bucketset_create((char *)&req_bucketset.set_name,slice_value(&st->cf->data_dir),st->cf->bucket_size,st->cf->set_hash_range,st->cf->data_length);
+      vector_push_back(&st->sets,bst);
     }
       resp.ret=0;
     break;
@@ -187,7 +191,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
   }
 
   resp.ack.req_type = req_type;
-  strncpy((char *)&resp.ack.name,(char *)&req_bucket.set_name,strlen((char *)&req_bucket.set_name));
+  strncpy((char *)&resp.ack.name,(char *)&req_bucketset.set_name,strlen((char *)&req_bucketset.set_name));
   send(eiw->watcher.fd, &resp,sizeof(resp), 0);
   ev_io_stop(loop, watcher);
 
@@ -195,7 +199,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
 }
-int netsocket_init(netsocket *ns, const char *saddr, int port, int backlog)
+int netsocket_init(netsocket *ns, const char *saddr, int port, int backlog,void *ctx)
 {
   if (ns != NULL)
   {
@@ -234,6 +238,7 @@ int netsocket_init(netsocket *ns, const char *saddr, int port, int backlog)
     }
     ns->sock = sock;
     ns->loop = loop;
+    ns->ctx = ctx;
     int yes = 1;
     setsockopt(ns->sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(int));
     int n_recvbuf = 512 * 1024; //setting recv buffer size
@@ -246,7 +251,7 @@ int netsocket_init(netsocket *ns, const char *saddr, int port, int backlog)
   }
   return -1;
 }
-void netsocket_start(netsocket *ns)
+void netsocket_run(netsocket *ns)
 {
   log_info("netsocket start running");
   ev_io_watcher socket_watcher;

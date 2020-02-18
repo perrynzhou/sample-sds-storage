@@ -5,8 +5,8 @@ TARGET  := test_simple_sds_server
   
 #compile and lib parameter
 CC      := gcc
-LIBS    := -L -lpthread -ljansson  -lev
-DEFINES := -DGFS_RM_TEST
+LIBS    := -L -lpthread -ljansson  -lev  -lpthread
+DEFINES := 
 INCLUDE := -I .
 CFLAGS  := -g  -O0 -std=gnu99 -D_GNU_SOURCE $(DEFINES) $(INCLUDE)
 BINFLAGS:= -g  -O0 -std=gnu99 -DGFS_TEST $(INCLUDE)
