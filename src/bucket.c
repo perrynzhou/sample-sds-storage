@@ -88,7 +88,7 @@ static int bucket_check_data_fd(bucket *bt)
   log_info_safe("open data file:%s.%d success,fd =%d", slice_value(&bt->name), bt->index, bt->fd);
   return 0;
 }
-int bucket_put(bucket *bt, bucket_object *obj)
+int bucket_put(bucket *bt, bucket_object *obj, int fd)
 {
 
   if (bt != NULL || obj != NULL)
@@ -97,18 +97,21 @@ int bucket_put(bucket *bt, bucket_object *obj)
     {
       log_fatal("%s.%d can't switch new file", slice_value(&bt->name), bt->index);
     }
-    uint32_t index = hash_jump_consistent(obj->obj_hash, (bt->max_rank-bt->min_rank))+bt->min_rank;
-    log_info_safe("current bucket-%d ,insert index:%ld,start:%ld,end:%d",bt->id,index,bt->min_rank,bt->max_rank);
-    list *lt = vector_at(&bt->cache,index);
+    uint32_t index = hash_jump_consistent(obj->obj_hash, (bt->max_rank - bt->min_rank)) + bt->min_rank;
+    log_info_safe("current bucket-%d ,insert index:%ld,start:%ld,end:%d", bt->id, index, bt->min_rank, bt->max_rank);
+    list *lt = vector_at(&bt->cache, index);
     if (lt == NULL)
     {
       lt = list_create();
       assert(lt != NULL);
       vector_insert(&bt->cache, obj->obj_hash, lt);
     }
+    if(bt->bs.write_bucket_object(bt, obj, fd)!=0){
+        return -1;
+    }
     list_node *node = list_node_create(obj);
     list_add(lt, node);
-    bt->bs.write_bucket_object(bt, obj);
+    __sync_fetch_and_add(&bt->current_offset, sizeof(*obj) + obj->data_len + obj->obj_name_len);
     return 0;
   }
   return -1;

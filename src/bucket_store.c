@@ -7,6 +7,9 @@
 
 #include "bucket_store.h"
 #include "log.h"
+#include "bucket.h"
+#include "bucket_object.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -15,8 +18,39 @@
 int read_bucket_object(void *bucket, void *object)
 {
 }
-int write_bucket_object(void *bucket, void *object)
+int write_bucket_object(void *bt, void *arg,int fd)
 {
+  bucket *bkt = (bucket *)bt;
+  bucket_object *obj=(bucket_object *)arg;
+  if(!bt||!obj) {
+     return -1;
+  }
+  ssize_t  len = obj->data_len;
+  ssize_t   read_len =0;
+  ssize_t   write_len=0;
+  size_t buffer_len = 4*1024*1024;
+  char *buffer = NULL;
+  int ret = -1;
+  while(read_len<len){
+    ssize_t  rn = read_n(fd,buffer,len);
+    if(rn>0) {
+      ssize_t wn=write_n(bkt->fd,buffer,rn);
+      read_len+=rn;
+    }
+    if(rn<=0) {
+      ret = 0;
+      break;
+    }
+  }
+  if(write_len != obj->data_len) {
+    goto out;
+  }
+out:
+  if(buffer!=NULL) {
+    free(buffer);
+  }
+  return ret;
+
 }
 int delete_bucket_object(int fd, void *bucket)
 {

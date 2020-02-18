@@ -20,6 +20,9 @@ vector *vector_create(uint64_t cap, vector_cb cb)
   }
   return vec;
 }
+size_t  vector_size(vector *vec){
+    return vec->size;
+}
 int vector_init(vector *vec, uint64_t cap, vector_cb cb)
 {
   if (vec != NULL)

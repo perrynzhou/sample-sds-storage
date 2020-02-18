@@ -15,6 +15,8 @@ typedef struct conf_t
  slice data_dir;
  int  data_length;
  int backlog;
+ int bucket_size;
+ int set_hash_range;
  void *ctx;
 }conf;
 conf *conf_create(const char *path);

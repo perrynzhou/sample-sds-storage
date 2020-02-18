@@ -27,11 +27,9 @@ inline void bucket_object_set_bucket_index(bucket_object *obj, uint32_t index)
     obj->bucket_index = index;
   }
 }
-bucket_object *bucket_object_create(uint64_t start_offset, uint8_t *obj_uid, uint32_t obj_name_len, uint64_t data_len)
-{
-  bucket_object *obj = (bucket_object *)calloc(1, sizeof(bucket_object));
-  assert(obj != NULL);
-  for (uint32_t i = 0; i < BUCKET_OBJECT_UID_LEN; i++)
+void bucket_object_init(bucket_object *obj,uint64_t bucket_index,uint64_t start_offset,uint8_t *obj_uid,uint32_t obj_name_len,uint64_t data_len){
+  if(obj!=NULL) {
+     for (uint32_t i = 0; i < BUCKET_OBJECT_UID_LEN; i++)
   {
     obj->uid[i] = obj_uid[i];
   }
@@ -39,8 +37,15 @@ bucket_object *bucket_object_create(uint64_t start_offset, uint8_t *obj_uid, uin
   obj->obj_name_len = obj_name_len;
   obj->obj_hash = 0;
   obj->data_len = data_len;
-  obj->bucket_index = 0;
+  obj->bucket_index=bucket_index;
   obj->status = ONLINE;
+  }
+}
+bucket_object *bucket_object_create(uint64_t bucket_index,uint64_t start_offset, uint8_t *obj_uid, uint32_t obj_name_len, uint64_t data_len)
+{
+  bucket_object *obj = (bucket_object *)calloc(1, sizeof(bucket_object));
+  assert(obj != NULL);
+  bucket_object_init(obj, bucket_index,start_offset, obj_uid, obj_name_len,  data_len);
   return obj;
 }
 int bucket_object_delete(bucket_object *obj)
@@ -48,5 +53,8 @@ int bucket_object_delete(bucket_object *obj)
   return 0;
 }
 void bucket_object_destroy(bucket_object *obj)
+{
+}
+void bucket_object_deinit(bucket_object *obj)
 {
 }

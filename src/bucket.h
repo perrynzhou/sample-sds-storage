@@ -26,6 +26,7 @@ typedef struct bucket_t
   uint64_t data_file_max_length; //data file length
   uint64_t data_file_cur_length;
   uint64_t index;
+  uint64_t current_offset;
   pthread_mutex_t lock;
   bucket_store bs;
   vector cache; //hashtable,each element save a list
@@ -33,7 +34,7 @@ typedef struct bucket_t
 } bucket;
 
 bucket *bucket_create(const char *name, uint64_t data_file_max_length, uint64_t start, uint64_t end);
-int bucket_put(bucket *bt, bucket_object *obj);
+int bucket_put(bucket *bt, bucket_object *obj,int fd);
 int bucket_del(bucket *bt, const char *name);
 bucket_object *bucket_get(bucket *bt, const char *name);
 void bucket_destroy(bucket *bt);

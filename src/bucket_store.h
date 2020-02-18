@@ -13,7 +13,7 @@
 typedef struct bucket_store_t
 {
   int (*read_bucket_object)(void *bucket, void *object);
-  int (*write_bucket_object)(void *bucket, void *object);
+  int (*write_bucket_object)(void *arg, void *obj,int fd);
   int (*delete_bucket_object)(int fd, void *bucket);
 } bucket_store;
 int bucket_store_init(bucket_store *bs);

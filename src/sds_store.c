@@ -51,27 +51,28 @@ void sds_store_deinit(sds_store *ss)
 
     vector_destroy(&ss->sets);
     conf_destroy(ss->cf);
-    netsocket_deinit(&ss->net);
+    //netsocket_deinit(&ss->net);
   }
 }
+/*
 int sds_store_run(sds_store *ss)
 {
   if (ss != NULL)
   {
-    int *test_ctx = calloc(1, sizeof(int));
-    *test_ctx = 1024;
-    ss->net.ctx = test_ctx;
+    
+    ss->net.ctx = ss;
     //ns.ctx = ss;
     netsocket_init(&ss->net, slice_value(&ss->cf->addr), ss->cf->port, ss->cf->backlog);
     netsocket_start(&ss->net);
   }
 }
+*/
 int main(int argc, char *argv[])
 {
   char *path = argv[1];
   sds_store ss;
+
   sds_store_init(&ss, path);
-  sds_store_run(&ss);
   sds_store_deinit(&ss);
   return 0;
 }

@@ -19,6 +19,7 @@ typedef struct vector_t
   vector_cb cb;
 } vector;
 vector *vector_create(uint64_t cap, vector_cb cb);
+size_t  vector_size(vector *vec);
 int vector_init(vector *vec, uint64_t cap, vector_cb cb);
 int vector_push_back(vector *vec, void *data);
 void *vector_at(vector *vec, uint64_t index);

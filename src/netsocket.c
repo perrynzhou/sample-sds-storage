@@ -7,6 +7,10 @@
 
 #include "netsocket.h"
 #include "log.h"
+#include "request.h"
+#include "hash.h"
+#include "sds_store.h"
+#include "utils.h"
 #include "slice.h"
 #include <unistd.h>
 #include <stdio.h>
@@ -15,9 +19,14 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <strings.h>
+#include <assert.h>
 #define NETSOCKET_DEFAULT_BACKLOG (1024)
 #define NETSOCKET_DEFAULT_PORT 8765
 #define NETSOCKET_DEFAULT_ADDR "127.0.0.1"
+#define NETSOCKET_DEFAULT_BUFFER_LENGTH (4 * 1024 * 1024)
+typedef void (*ev_read_callback)(struct ev_loop *loop, struct ev_io *watcher, int revents);
+typedef void (*ev_write_callback)(struct ev_loop *loop, struct ev_io *watcher, int revents);
+typedef void (*ev_timeout_callback)(EV_P_ ev_timer *w, int revents);
 typedef struct ev_io_watcher_t
 {
   struct ev_io watcher;
@@ -28,34 +37,80 @@ typedef struct ev_timer_watcher_t
   ev_timer watcher;
   void *ctx;
 } ev_timer_watcher;
-
+typedef struct ev_thread_t
+{
+  int fd;
+  pthread_t tid;
+  ev_io_watcher *ew;
+  struct ev_loop *loop;
+} ev_thread;
 static void timeout_cb(EV_P_ ev_timer *w, int revents);
 static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
 static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
 static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
+static ev_thread *ev_thread_create(int fd,
+                                   ev_io_watcher *ew,
+                                   struct ev_loop *loop)
+{
+  ev_thread *ev_thd = (ev_thread *)calloc(1, sizeof(ev_thread));
+  assert(ev_thd != NULL);
+  ev_thd->ew = ew;
+  ev_thd->fd = fd;
+  ev_thd->loop = loop;
+  return ev_thd;
+}
+
+static void ev_thread_destroy(void *ev_thd)
+{
+  ev_thread **ev_thd_ptr = (ev_thread **)ev_thd;
+  if (ev_thd_ptr != NULL)
+  {
+    free(*ev_thd_ptr);
+    *ev_thd_ptr = NULL;
+  }
+}
+static void *netsocket_do_request(void *arg)
+{
+  ev_thread **ev_thd_ptr = (ev_thread **)arg;
+  if (ev_thd_ptr != NULL && *ev_thd_ptr != NULL)
+  {
+    ev_thread *ev_thd = (*ev_thd_ptr);
+    struct ev_io *w_client = (struct ev_io *)malloc(sizeof(struct ev_io));
+    ev_io_init(w_client, read_cb, ev_thd->fd, EV_READ);
+    ev_io_start(ev_thd->loop, w_client);
+    ev_thread_destroy(arg);
+    free(w_client);
+    pthread_detach(ev_thd->tid);
+  }
+}
 static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
-  int client_sd;
+  int client_fd;
   ev_io_watcher *eiw = (ev_io_watcher *)watcher;
-  struct ev_io *w_client = (struct ev_io *)malloc(sizeof(struct ev_io));
   if (EV_ERROR & revents)
   {
     log_info("error event in accept\n");
     return;
   }
 
-  client_sd = accept(watcher->fd, (struct sockaddr *)&client_addr, &client_len);
-  if (client_sd < 0)
+  client_fd = accept(watcher->fd, (struct sockaddr *)&client_addr, &client_len);
+  if (client_fd < 0)
   {
     log_err("accept error\n");
     return;
   }
-  log_info("someone connected.\n");
-
-  ev_io_init(w_client, read_cb, client_sd, EV_READ);
-  ev_io_start(loop, w_client);
+  char client_host[64] = {'\0'};
+  fetch_sock_addr_info(client_fd, (char *)&client_host);
+  log_info("%s connected", (char *)&client_host);
+  ev_thread *e_thd = ev_thread_create(client_fd, eiw, loop);
+  if (e_thd != NULL)
+  {
+    pthread_create(&e_thd->tid, NULL, (void *)&netsocket_do_request, (void *)&e_thd);
+  }
+  //ev_io_init(w_client, read_cb, client_sd, EV_READ);
+  //ev_io_start(loop, w_client);
 }
 static void timeout_cb(EV_P_ ev_timer *w, int revents)
 {
@@ -65,34 +120,77 @@ static void timeout_cb(EV_P_ ev_timer *w, int revents)
 }
 static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
-  char buffer[1024];
+  ev_io_watcher *eiw=(ev_io_watcher *)watcher;
+  sds_store *st=(sds_store *)eiw->ctx;
+  char *buffer = (char *)calloc(NETSOCKET_DEFAULT_BUFFER_LENGTH, sizeof(char));
+  request_put_bucketset req_bucketset;
+  request_put_object req_object;
+  bucketset *sets=NULL;
+  bucket   *bkt=NULL;
+  assert(buffer != NULL);
   ssize_t read;
   if (EV_ERROR & revents)
   {
     printf("error event in read");
     return;
   }
-
-  read = recv(watcher->fd, buffer, 1024, 0);
-  if (read < 0)
+  uint8_t req_type = 0;
+  read = recv(eiw->watcher.fd, &req_type, sizeof(uint8_t), 0);
+  if (read > 0)
   {
     log_err("read error,errno:%d\n", errno);
     return;
   }
-  if (read == 0)
+  size_t len = 0;
+    response_ack resp;
+    bucketset *bst=NULL;
+    uint64_t hash=0;
+  switch (req_type)
   {
-    log_info("someone disconnected.errno:%d", errno);
-    ev_io_stop(loop, watcher);
-    free(watcher);
-    return;
-  }
-  else
-  {
-    log_info("get the message:%s", buffer);
+  case REQ_PUT_OBJECT:
+    read_n(eiw->watcher.fd, &req_object, sizeof(req_object));
+    len = strlen((char *)&req_object.uid);
+     hash=gfs_hashfn((char *)&req_object.uid,len);
+    for(int i=0;i<vector_size(&st->sets);i++) {
+       bst =(bucketset *)vector_at(&st->sets,i);
+       if(strncmp(slice_value(&bst->set_name),(char *)&req_object.set_name,slice_size(&bst->set_name))==0) {
+          sets = bst;
+          break;
+       }
+    }
+    if(sets==NULL) {
+      resp.ret = -1;
+    }else{
+          bucket *bt = bucketset_search_bucket(sets,hash);
+          bucket_object obj;
+          bucket_object_init(&obj,obj.bucket_index,bt->current_offset,(uint8_t *)req_object.uid,strlen(req_object.object_name),req_object.data_length);
+          bucket_put(bt,&obj,eiw->watcher.fd);
+    }
+    break;
+  case REQ_PUT_BUCKETSET:
+    read_n(eiw->watcher.fd, &req_bucketset, sizeof(req_bucketset));
+    for(int i=0;i<vector_size(&st->sets);i++) {
+       bucketset *bst =(bucketset *)vector_at(&st->sets,i);
+       if(strncmp(slice_value(&bst->set_name),(char *)&req_bucketset.set_name,slice_size(&bst->set_name))==0) {
+          sets = bst;
+          break;
+       }
+    }
+    if(sets==NULL || vector_size(&st->sets)==0) {
+      bucketset *bst = bucketset_create((char *)&req_bucket.set_name,slice_value(&st->cf->data_dir),st->cf->bucket_size,st->cf->set_hash_range,st->cf->data_length);
+      vector_push_back(&st->cf,bst);
+    }
+      resp.ret=0;
+    break;
+  default:
+    break;
   }
 
-  send(watcher->fd, buffer, read, 0);
-  bzero(buffer, read);
+  resp.ack.req_type = req_type;
+  strncpy((char *)&resp.ack.name,(char *)&req_bucket.set_name,strlen((char *)&req_bucket.set_name));
+  send(eiw->watcher.fd, &resp,sizeof(resp), 0);
+  ev_io_stop(loop, watcher);
+
 }
 static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
