@@ -15,6 +15,7 @@ enum request_type
    REQ_PUT_OBJECT = 0,
    REQ_DEL_OBJECT,
    REQ_PUT_BUCKETSET,
+   REQ_LIST_BUCKSET,
 };
 typedef struct response_head_t
 {
@@ -36,8 +37,8 @@ typedef struct request_put_object_t
 typedef struct request_put_bucketset_t
 {
    char set_name[BUCKET_BUFFER_LENGTH];
-   char bucket_name[BUCKET_BUFFER_LENGTH];
 } request_put_bucketset;
-int request_put_object_init(response_ack *ack, int sock, const char *path, const char *bucket_name);
-int request_put_bucketset_init(response_ack *ack, int sock, const char *setname,const char *bucket_name);
+
+int request_put_object_init(response_ack *ack, int sock, const char *path, const char *set_name);
+int request_put_bucketset_init(response_ack *ack, int sock, const char *setname);
 #endif

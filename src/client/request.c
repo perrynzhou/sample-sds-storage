@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #define REQUEST_READ_BUFFER_LENGTH (4*1024 * 1024)
-int  request_put_object_init(response_ack *ack,int sock,const char *path,const char *bucket_name)
+int  request_put_object_init(response_ack *ack,int sock,const char *path,const char *set_name)
 {
   bool is_success = false;
   request_put_object *req = NULL;
@@ -41,7 +41,7 @@ int  request_put_object_init(response_ack *ack,int sock,const char *path,const c
       parse_file_name(&name, path);
       req->data_length = st.st_size;
       strncpy((char *)&req->object_name, slice_value(&name), slice_size(&name));
-      strncpy((char *)&req->set_name, bucket_name, strlen(bucket_name));
+      strncpy((char *)&req->set_name, set_name, strlen(set_name));
       md5_file(path, (char *)&uid);
       slice_deinit(&name);
       size_t length = req->data_length;
@@ -86,7 +86,7 @@ out:
   }
   return (is_success) ? 0 : -1;
 }
-int request_put_bucketset_init(response_ack *ack, int sock, const char *set_name,const char *bucket_name)
+int request_put_bucketset_init(response_ack *ack, int sock, const char *set_name)
 {
   bool is_success = false;
   request_put_bucketset *req = NULL;
@@ -97,7 +97,6 @@ int request_put_bucketset_init(response_ack *ack, int sock, const char *set_name
     req = (request_put_bucketset *)calloc(1, sizeof(request_put_bucketset));
     assert(req != NULL);
     strncpy((char *)&req->set_name, set_name, strlen(set_name));
-    strncpy((char *)&req->bucket_name, bucket_name, strlen(bucket_name));
 
     if (read_n(sock, req, sizeof(*req)) != sizeof(*req))
     {
