@@ -11,7 +11,7 @@ INCLUDE := -I .
 CFLAGS  := -g  -O0 -std=gnu99 -D_GNU_SOURCE $(DEFINES) $(INCLUDE)
 BINFLAGS:= -g  -O0 -std=gnu99 -DGFS_TEST $(INCLUDE)
 OBJECT_PATH := ./
-SOURCE  := $(wildcard ./*.c ../*.c)
+SOURCE  := $(wildcard ./*.c ../common/*.c)
 OBJS    := $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCE)))
 
 
